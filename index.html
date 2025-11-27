@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Requests - DJ Viciouz</title>
+  <style>
+    :root {
+      --bg: #111;
+      --card-bg: #181818;
+      --accent: #e50914;
+      --accent-dark: #b2070f;
+      --text: #ffffff;
+      --muted: #bbbbbb;
+      --border: #333333;
+      --error: #ff5555;
+      --success: #4caf50;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 480px;
+      padding: 16px;
+      margin: 0 auto 40px;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 16px;
+      margin-bottom: 12px;
+    }
+
+    header img {
+      max-width: 260px;
+      width: 70%;
+      height: auto;
+      cursor: pointer;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      margin: 8px 0 0;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+    }
+
+    .field-group {
+      margin-bottom: 12px;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .song-row {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .song-row input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background-color: #101010;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .song-row input::placeholder,
+    textarea::placeholder {
+      color: #666666;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background-color: #101010;
+      color: var(--text);
+      resize: none;
+      min-height: 70px;
+      font-size: 0.95rem;
+    }
+
+    .helper-text {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .limit-text {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .error-text {
+      font-size: 0.85rem;
+      color: var(--error);
+      margin-top: 6px;
+    }
+
+    .success-text {
+      font-size: 0.9rem;
+      color: var(--success);
+      margin-top: 8px;
+    }
+
+    .buttons-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: var(--text);
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background-color: #202020;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .icon-plus {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .max-requests-banner {
+      margin-top: 10px;
+      font-size: 0.88rem;
+      color: var(--error);
+      text-align: center;
+    }
+
+    /* Thank-you / disclaimer screen */
+    #thankyou-screen {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #thankyou-screen h2 {
+      margin-bottom: 8px;
+      font-size: 1.25rem;
+    }
+
+    #thankyou-screen p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 4px 0;
+    }
+
+    @media (min-width: 600px) {
+      .wrapper {
+        padding: 24px;
+      }
+
+      .card {
+        padding: 18px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <header>
+      <!-- Make logo clickable back to your main site if you like -->
+      <a href="https://djviciouzguill.github.io">
+        <img src="logo.png" alt="DJ Viciouz Logo">
+      </a>
+      <h1>Song Requests</h1>
+    </header>
+
+    <div class="card" id="request-card">
+      <form id="request-form" autocomplete="off" novalidate>
+        <div id="song-rows">
+          <!-- Song rows are injected by JavaScript -->
+        </div>
+
+        <div class="limit-text" id="per-submission-limit">
+          You can request up to <strong>3 songs</strong> in this form.
+        </div>
+
+        <div class="field-group" style="margin-top: 12px;">
+          <label for="message">Shout-out / Dedication (optional)</label>
+          <textarea id="message" name="message"
+                    maxlength="200"
+                    placeholder="Example: This one goes out to Lisa for her birthday!"></textarea>
+          <div class="helper-text">Max 200 characters.</div>
+        </div>
+
+        <div id="form-error" class="error-text hidden"></div>
+        <div id="form-success" class="success-text hidden"></div>
+
+        <div class="buttons-row">
+          <button type="button" id="add-song-btn" class="btn btn-secondary">
+            <span class="icon-plus">+</span> Add another song
+          </button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">
+            Submit Requests
+          </button>
+        </div>
+
+        <div id="max-requests-banner" class="max-requests-banner hidden">
+          You’ve reached your maximum of 3 song requests for the next hour.
+        </div>
+
+        <div class="footer-note">
+          Please double-check spelling so we can find your track quickly.
+        </div>
+      </form>
+
+      <div id="thankyou-screen" class="hidden">
+        <h2>Thanks for your request!</h2>
+        <p>We’ve received your songs and shout-out.</p>
+        <p><strong>Note:</strong> We do <em>not</em> guarantee that your song will be played immediately or at all, due to time, crowd energy, and content restrictions.</p>
+        <p>We appreciate your requests and will do our best to work them into the set.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // CONFIG
+    const MAX_SONG_ROWS_PER_FORM = 3;
+    const MAX_SONGS_PER_HOUR = 3; // per device/browser
+    const HOUR_MS = 60 * 60 * 1000;
+    const STORAGE_KEY = "djv_song_request_timestamps_v1";
+
+    const songRowsContainer = document.getElementById("song-rows");
+    const addSongBtn = document.getElementById("add-song-btn");
+    const submitBtn = document.getElementById("submit-btn");
+    const formError = document.getElementById("form-error");
+    const formSuccess = document.getElementById("form-success");
+    const maxRequestsBanner = document.getElementById("max-requests-banner");
+    const requestForm = document.getElementById("request-form");
+    const thankyouScreen = document.getElementById("thankyou-screen");
+    const requestCard = document.getElementById("request-card");
+
+    // UTIL: load & save timestamps
+    function loadTimestamps() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+        const now = Date.now();
+        // keep only last hour
+        return arr.filter(ts => now - ts < HOUR_MS);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveTimestamps(timestamps) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(timestamps));
+    }
+
+    function addTimestamps(count) {
+      const now = Date.now();
+      const existing = loadTimestamps();
+      for (let i = 0; i < count; i++) {
+        existing.push(now);
+      }
+      saveTimestamps(existing);
+    }
+
+    function getRemainingRequests() {
+      const recent = loadTimestamps();
+      const used = recent.length;
+      return Math.max(0, MAX_SONGS_PER_HOUR - used);
+    }
+
+    // SONG ROW HANDLING
+    function createSongRow(index) {
+      const row = document.createElement("div");
+      row.className = "song-row";
+      row.dataset.index = index;
+
+      const artistInput = document.createElement("input");
+      artistInput.type = "text";
+      artistInput.placeholder = "Artist";
+      artistInput.name = `artist_${index}`;
+      artistInput.maxLength = 60;
+
+      const titleInput = document.createElement("input");
+      titleInput.type = "text";
+      titleInput.placeholder = "Song Title";
+      titleInput.name = `title_${index}`;
+      titleInput.maxLength = 80;
+
+      row.appendChild(artistInput);
+      row.appendChild(titleInput);
+      return row;
+    }
+
+    function getSongRowCount() {
+      return songRowsContainer.querySelectorAll(".song-row").length;
+    }
+
+    function ensureInitialRows() {
+      if (getSongRowCount() === 0) {
+        songRowsContainer.appendChild(createSongRow(1));
+      }
+      updateAddButtonVisibility();
+    }
+
+    function updateAddButtonVisibility() {
+      const rowCount = getSongRowCount();
+      if (rowCount >= MAX_SONG_ROWS_PER_FORM) {
+        addSongBtn.classList.add("hidden");
+      } else {
+        addSongBtn.classList.remove("hidden");
+      }
+    }
+
+    addSongBtn.addEventListener("click", () => {
+      const rowCount = getSongRowCount();
+      if (rowCount >= MAX_SONG_ROWS_PER_FORM) return;
+      songRowsContainer.appendChild(createSongRow(rowCount + 1));
+      updateAddButtonVisibility();
+    });
+
+    // FORM & LIMIT LOGIC
+    function disableFormForHour() {
+      // disable all inputs & buttons
+      const inputs = requestForm.querySelectorAll("input, textarea, button");
+      inputs.forEach(el => {
+        el.disabled = true;
+      });
+      maxRequestsBanner.classList.remove("hidden");
+    }
+
+    function checkHourlyLimitOnLoad() {
+      const remaining = getRemainingRequests();
+      if (remaining <= 0) {
+        disableFormForHour();
+      }
+    }
+
+    requestForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      formError.classList.add("hidden");
+      formSuccess.classList.add("hidden");
+      formError.textContent = "";
+      formSuccess.textContent = "";
+
+      const rows = Array.from(songRowsContainer.querySelectorAll(".song-row"));
+      const songs = [];
+
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        const artist = inputs[0].value.trim();
+        const title = inputs[1].value.trim();
+        if (artist || title) {
+          // Only accept if both fields have some content
+          if (!artist || !title) {
+            // Just mark error; we'll handle below
+          } else {
+            songs.push({ artist, title });
+          }
+        }
+      });
+
+      if (songs.length === 0) {
+        formError.textContent = "Please enter at least one song with both artist and title.";
+        formError.classList.remove("hidden");
+        return;
+      }
+
+      // Check for any partially filled rows
+      const hasPartial = rows.some(row => {
+        const inputs = row.querySelectorAll("input");
+        const artist = inputs[0].value.trim();
+        const title = inputs[1].value.trim();
+        return (artist && !title) || (!artist && title);
+      });
+      if (hasPartial) {
+        formError.textContent = "Please complete both artist and title for each song you're submitting.";
+        formError.classList.remove("hidden");
+        return;
+      }
+
+      const remaining = getRemainingRequests();
+      if (songs.length > remaining) {
+        formError.textContent = `You can only request ${remaining} more song${remaining === 1 ? "" : "s"} in the next hour.`;
+        formError.classList.remove("hidden");
+        return;
+      }
+
+      const message = document.getElementById("message").value.trim();
+
+      // At this point, data is valid & within limits.
+      // This is where you'd send to your backend / Google Form / email service.
+      // For now, we just log it and show a thank-you screen.
+      const payload = {
+        songs,
+        message,
+        submittedAt: new Date().toISOString()
+      };
+      console.log("Song request payload:", payload);
+
+      // TODO: Hook this into Google Forms or an email endpoint later.
+      // Example: fetch("YOUR_ENDPOINT_URL", { method: "POST", body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } })
+
+      // Mark usage
+      addTimestamps(songs.length);
+
+      // Show thank-you + disclaimer
+      requestForm.classList.add("hidden");
+      thankyouScreen.classList.remove("hidden");
+
+      // After submitting, enforce the limit if user hit the max
+      if (getRemainingRequests() <= 0) {
+        maxRequestsBanner.classList.remove("hidden");
+      }
+
+      // Optional: disable everything so they don't resubmit from this screen
+      const inputs = requestForm.querySelectorAll("input, textarea, button");
+      inputs.forEach(el => el.disabled = true);
+    });
+
+    // INIT
+    ensureInitialRows();
+    checkHourlyLimitOnLoad();
+  </script>
+
+</body>
+</html>
