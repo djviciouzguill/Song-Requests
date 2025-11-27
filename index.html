@@ -304,243 +304,236 @@
   </div>
 
   <script>
-    // CONFIG
-    const MAX_SONG_ROWS_PER_FORM = 3;
-    const MAX_SONGS_PER_HOUR = 3; // per device/browser
-    const HOUR_MS = 60 * 60 * 1000;
-    const STORAGE_KEY = "djv_song_request_timestamps_v1";
+  // CONFIG
+  const MAX_SONG_ROWS_PER_FORM = 3;
+  const MAX_SONGS_PER_HOUR = 3; // per device/browser
+  const HOUR_MS = 60 * 60 * 1000;
+  const STORAGE_KEY = "djv_song_request_timestamps_v1";
 
-    // 🔴 Your Google Apps Script Web App URL
-    const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbz0rkpnOJN3mB4yirgFtuBsQWJNV5HZ3BQZydafmIbT6xoQ23DpmKfMvbxESssOTSQ/exec";
+  // Your Google Apps Script Web App URL
+  const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbz0rkpnOJN3mB4yirgFtuBsQWJNV5HZ3BQZydafmIbT6xoQ23DpmKfMvbxESssOTSQ/exec";
 
-    const songRowsContainer = document.getElementById("song-rows");
-    const addSongBtn = document.getElementById("add-song-btn");
-    const submitBtn = document.getElementById("submit-btn");
-    const formError = document.getElementById("form-error");
-    const formSuccess = document.getElementById("form-success");
-    const maxRequestsBanner = document.getElementById("max-requests-banner");
-    const requestForm = document.getElementById("request-form");
-    const thankyouScreen = document.getElementById("thankyou-screen");
-    const requestCard = document.getElementById("request-card");
-    const messageInput = document.getElementById("message");
+  const songRowsContainer = document.getElementById("song-rows");
+  const addSongBtn = document.getElementById("add-song-btn");
+  const submitBtn = document.getElementById("submit-btn");
+  const formError = document.getElementById("form-error");
+  const formSuccess = document.getElementById("form-success");
+  const maxRequestsBanner = document.getElementById("max-requests-banner");
+  const requestForm = document.getElementById("request-form");
+  const thankyouScreen = document.getElementById("thankyou-screen");
+  const requestCard = document.getElementById("request-card");
+  const messageInput = document.getElementById("message");
 
-    // --- RATE LIMIT: load & save timestamps ---
-    function loadTimestamps() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return [];
-        const arr = JSON.parse(raw);
-        if (!Array.isArray(arr)) return [];
-        const now = Date.now();
-        // keep only last hour
-        return arr.filter(ts => now - ts < HOUR_MS);
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveTimestamps(timestamps) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(timestamps));
-    }
-
-    function addTimestamps(count) {
+  // --- RATE LIMIT: load & save timestamps ---
+  function loadTimestamps() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
       const now = Date.now();
-      const existing = loadTimestamps();
-      for (let i = 0; i < count; i++) {
-        existing.push(now);
+      // keep only last hour
+      return arr.filter(ts => now - ts < HOUR_MS);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveTimestamps(timestamps) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(timestamps));
+  }
+
+  function addTimestamps(count) {
+    const now = Date.now();
+    const existing = loadTimestamps();
+    for (let i = 0; i < count; i++) {
+      existing.push(now);
+    }
+    saveTimestamps(existing);
+  }
+
+  function getRemainingRequests() {
+    const recent = loadTimestamps();
+    const used = recent.length;
+    return Math.max(0, MAX_SONGS_PER_HOUR - used);
+  }
+
+  function disableFormForHour() {
+    const inputs = requestForm.querySelectorAll("input, textarea, button");
+    inputs.forEach(el => {
+      el.disabled = true;
+    });
+    maxRequestsBanner.classList.remove("hidden");
+  }
+
+  function updateRequestCountUI() {
+    const remaining = getRemainingRequests();
+    if (remaining <= 0) {
+      disableFormForHour();
+    } else {
+      maxRequestsBanner.classList.add("hidden");
+    }
+  }
+
+  function checkHourlyLimitOnLoad() {
+    updateRequestCountUI();
+  }
+
+  // --- SONG ROW HANDLING ---
+  function createSongRow(index) {
+    const row = document.createElement("div");
+    row.className = "song-row";
+    row.dataset.index = index;
+
+    const artistInput = document.createElement("input");
+    artistInput.type = "text";
+    artistInput.placeholder = "Artist";
+    artistInput.name = `artist_${index}`;
+    artistInput.maxLength = 60;
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.placeholder = "Song Title";
+    titleInput.name = `title_${index}`;
+    titleInput.maxLength = 80;
+
+    row.appendChild(artistInput);
+    row.appendChild(titleInput);
+    return row;
+  }
+
+  function getSongRowCount() {
+    return songRowsContainer.querySelectorAll(".song-row").length;
+  }
+
+  function ensureInitialRows() {
+    if (getSongRowCount() === 0) {
+      songRowsContainer.appendChild(createSongRow(1));
+    }
+    updateAddButtonVisibility();
+  }
+
+  function updateAddButtonVisibility() {
+    const rowCount = getSongRowCount();
+    if (rowCount >= MAX_SONG_ROWS_PER_FORM) {
+      addSongBtn.classList.add("hidden");
+    } else {
+      addSongBtn.classList.remove("hidden");
+    }
+  }
+
+  addSongBtn.addEventListener("click", () => {
+    const rowCount = getSongRowCount();
+    if (rowCount >= MAX_SONG_ROWS_PER_FORM) return;
+    songRowsContainer.appendChild(createSongRow(rowCount + 1));
+    updateAddButtonVisibility();
+  });
+
+  // --- FORM SUBMIT HANDLER ---
+  requestForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    formError.classList.add("hidden");
+    formSuccess.classList.add("hidden");
+    formError.textContent = "";
+    formSuccess.textContent = "";
+
+    const rows = Array.from(songRowsContainer.querySelectorAll(".song-row"));
+    const songs = [];
+
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll("input");
+      const artist = inputs[0].value.trim();
+      const title = inputs[1].value.trim();
+      if (artist || title) {
+        if (!artist || !title) {
+          // will be handled as partial below
+        } else {
+          songs.push({ artist, title });
+        }
       }
-      saveTimestamps(existing);
+    });
+
+    if (songs.length === 0) {
+      formError.textContent = "Please enter at least one song with both artist and title.";
+      formError.classList.remove("hidden");
+      return;
     }
 
-    function getRemainingRequests() {
-      const recent = loadTimestamps();
-      const used = recent.length;
-      return Math.max(0, MAX_SONGS_PER_HOUR - used);
+    const hasPartial = rows.some(row => {
+      const inputs = row.querySelectorAll("input");
+      const artist = inputs[0].value.trim();
+      const title = inputs[1].value.trim();
+      return (artist && !title) || (!artist && title);
+    });
+    if (hasPartial) {
+      formError.textContent = "Please complete both artist and title for each song you're submitting.";
+      formError.classList.remove("hidden");
+      return;
     }
 
-    // Disable form if they've hit the limit
-    function disableFormForHour() {
-      const inputs = requestForm.querySelectorAll("input, textarea, button");
-      inputs.forEach(el => {
-        el.disabled = true;
-      });
-      maxRequestsBanner.classList.remove("hidden");
+    const remaining = getRemainingRequests();
+    if (songs.length > remaining) {
+      formError.textContent = `You can only request ${remaining} more song${remaining === 1 ? "" : "s"} in the next hour.`;
+      formError.classList.remove("hidden");
+      return;
     }
 
-    function updateRequestCountUI() {
-      const remaining = getRemainingRequests();
-      if (remaining <= 0) {
-        disableFormForHour();
-      } else {
-        maxRequestsBanner.classList.add("hidden");
-      }
-    }
+    const message = messageInput.value.trim();
 
-    function checkHourlyLimitOnLoad() {
+    const payload = {
+      songs,
+      message,
+      submittedAt: new Date().toISOString()
+    };
+
+    console.log("Submitting payload to Google Apps Script (no-cors fire-and-forget):", payload);
+
+    submitBtn.disabled = true;
+    addSongBtn.disabled = true;
+    formError.classList.add("hidden");
+    formSuccess.classList.add("hidden");
+
+    // 🔥 CORS-safe "fire and forget" POST
+    fetch(ENDPOINT_URL, {
+      method: "POST",
+      mode: "no-cors", // <-- avoids CORS preflight / blocking
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8" // simple header allowed in no-cors
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      // We can't read the response in no-cors mode,
+      // but the request has been sent to Google.
+      console.log("Request sent to Google endpoint (opaque response).");
+
+      // Mark usage AFTER sending
+      addTimestamps(songs.length);
       updateRequestCountUI();
-    }
 
-    // --- SONG ROW HANDLING ---
-    function createSongRow(index) {
-      const row = document.createElement("div");
-      row.className = "song-row";
-      row.dataset.index = index;
+      // Show thank-you screen
+      requestForm.classList.add("hidden");
+      thankyouScreen.classList.remove("hidden");
 
-      const artistInput = document.createElement("input");
-      artistInput.type = "text";
-      artistInput.placeholder = "Artist";
-      artistInput.name = `artist_${index}`;
-      artistInput.maxLength = 60;
-
-      const titleInput = document.createElement("input");
-      titleInput.type = "text";
-      titleInput.placeholder = "Song Title";
-      titleInput.name = `title_${index}`;
-      titleInput.maxLength = 80;
-
-      row.appendChild(artistInput);
-      row.appendChild(titleInput);
-      return row;
-    }
-
-    function getSongRowCount() {
-      return songRowsContainer.querySelectorAll(".song-row").length;
-    }
-
-    function ensureInitialRows() {
-      if (getSongRowCount() === 0) {
-        songRowsContainer.appendChild(createSongRow(1));
-      }
-      updateAddButtonVisibility();
-    }
-
-    function updateAddButtonVisibility() {
-      const rowCount = getSongRowCount();
-      if (rowCount >= MAX_SONG_ROWS_PER_FORM) {
-        addSongBtn.classList.add("hidden");
-      } else {
-        addSongBtn.classList.remove("hidden");
-      }
-    }
-
-    addSongBtn.addEventListener("click", () => {
-      const rowCount = getSongRowCount();
-      if (rowCount >= MAX_SONG_ROWS_PER_FORM) return;
-      songRowsContainer.appendChild(createSongRow(rowCount + 1));
-      updateAddButtonVisibility();
+      // Lock the form inputs
+      const inputs = requestForm.querySelectorAll("input, textarea, button");
+      inputs.forEach((el) => el.disabled = true);
+    })
+    .catch((err) => {
+      console.error("Error submitting request:", err);
+      formError.textContent = "There was a problem saving your request. Please try again in a moment.";
+      formError.classList.remove("hidden");
+      submitBtn.disabled = false;
+      addSongBtn.disabled = false;
     });
+  });
 
-    // --- FORM SUBMIT HANDLER ---
-    requestForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      formError.classList.add("hidden");
-      formSuccess.classList.add("hidden");
-      formError.textContent = "";
-      formSuccess.textContent = "";
+  // INIT
+  ensureInitialRows();
+  checkHourlyLimitOnLoad();
+</script>
 
-      const rows = Array.from(songRowsContainer.querySelectorAll(".song-row"));
-      const songs = [];
-
-      rows.forEach(row => {
-        const inputs = row.querySelectorAll("input");
-        const artist = inputs[0].value.trim();
-        const title = inputs[1].value.trim();
-        if (artist || title) {
-          // Only accept if both fields have some content
-          if (!artist || !title) {
-            // handled as partial below
-          } else {
-            songs.push({ artist, title });
-          }
-        }
-      });
-
-      if (songs.length === 0) {
-        formError.textContent = "Please enter at least one song with both artist and title.";
-        formError.classList.remove("hidden");
-        return;
-      }
-
-      // Check for any partially filled rows
-      const hasPartial = rows.some(row => {
-        const inputs = row.querySelectorAll("input");
-        const artist = inputs[0].value.trim();
-        const title = inputs[1].value.trim();
-        return (artist && !title) || (!artist && title);
-      });
-      if (hasPartial) {
-        formError.textContent = "Please complete both artist and title for each song you're submitting.";
-        formError.classList.remove("hidden");
-        return;
-      }
-
-      const remaining = getRemainingRequests();
-      if (songs.length > remaining) {
-        formError.textContent = `You can only request ${remaining} more song${remaining === 1 ? "" : "s"} in the next hour.`;
-        formError.classList.remove("hidden");
-        return;
-      }
-
-      const message = messageInput.value.trim();
-
-      // Build payload
-      const payload = {
-        songs,
-        message,
-        submittedAt: new Date().toISOString()
-      };
-
-      console.log("Submitting payload to Google Apps Script:", payload);
-
-      submitBtn.disabled = true;
-      addSongBtn.disabled = true;
-      formError.classList.add("hidden");
-      formSuccess.classList.add("hidden");
-
-      fetch(ENDPOINT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      })
-      .then((response) => {
-        return response.json().catch(() => {
-          throw new Error("Non-JSON response from endpoint");
-        });
-      })
-      .then((data) => {
-        console.log("Response from endpoint:", data);
-
-        if (!data || !data.success) {
-          throw new Error(data && data.error ? data.error : "Unknown error from endpoint");
-        }
-
-        // Mark usage AFTER successful save
-        addTimestamps(songs.length);
-        updateRequestCountUI();
-
-        // Show thank-you screen
-        requestForm.classList.add("hidden");
-        thankyouScreen.classList.remove("hidden");
-
-        // Lock the form inputs
-        const inputs = requestForm.querySelectorAll("input, textarea, button");
-        inputs.forEach((el) => el.disabled = true);
-      })
-      .catch((err) => {
-        console.error("Error submitting request:", err);
-        formError.textContent = "There was a problem saving your request. Please try again in a moment.";
-        formError.classList.remove("hidden");
-        submitBtn.disabled = false;
-        addSongBtn.disabled = false;
-      });
-    });
-
-    // INIT
-    ensureInitialRows();
-    checkHourlyLimitOnLoad();
-  </script>
 
 </body>
 </html>
+
